@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Part-5 (Customer) — Track My Queries</title>
+<style>
+  body{margin:0;font-family:Arial;background:#000;color:#111}
+  .wrap{max-width:1180px;margin:auto;padding:18px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  h2,h3{margin:0 0 10px;color:#111}
+  label{font-size:12px;opacity:.85;display:block;margin:10px 0 6px}
+  input,select,button{
+    width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;
+    background:#fff;color:#111;outline:none;box-sizing:border-box
+  }
+  input:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  button{background:#2563eb;color:#fff;font-weight:bold;cursor:pointer;border:none;margin-top:12px}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .btn2{background:#f3f4f6;color:#111;border:1px solid #d1d5db;margin-top:8px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:900px){.row{grid-template-columns:1fr}}
+  .hint{font-size:12px;color:#374151;margin-top:6px;line-height:1.4}
+  .gridCards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  @media(max-width:900px){.gridCards{grid-template-columns:1fr}}
+  .dcard{border:1px solid #e5e7eb;border-radius:14px;padding:12px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .dcard .t{font-size:12px;color:#374151;margin-bottom:6px}
+  .dcard .n{font-size:22px;font-weight:800}
+  .dcard .s{font-size:12px;color:#6b7280;margin-top:6px}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{border:1px solid #e5e7eb;padding:8px;font-size:12px;vertical-align:top}
+  th{background:#f9fafb;text-align:left}
+  .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  .pill{display:inline-block;padding:3px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px}
+  .topbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+  .profile{display:flex;gap:10px;align-items:center;border:1px solid #e5e7eb;background:#f9fafb;border-radius:14px;padding:10px 12px}
+  .avatar{width:34px;height:34px;border-radius:999px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .pname{font-weight:800}
+  .psub{font-size:12px;color:#6b7280}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .actions button{width:auto;padding:10px 12px;margin-top:0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+   <div style="text-align:center;width:100%;">
+  <img src="logo.png" alt="Logo" style="max-width:180px;height:auto;">
+</div>
+    <div class="profile" id="profile" style="display:none">
+      <div class="avatar" id="av">C</div>
+      <div>
+        <div class="pname" id="pname">Customer</div>
+        <div class="psub" id="psub"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="color:#f6c10a;">Search</h3>
+
+    <div class="row">
+      <div>
+        <label>Mobile Number</label>
+        <input id="phone" placeholder="10 digit mobile">
+      </div>
+      <div>
+        <label>Email (Gmail)</label>
+        <input id="email" placeholder="example@gmail.com">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn2" type="button" id="btnSearch">🔎 Search</button>
+      <button class="btn2" type="button" id="btnClear">🧹 Clear</button>
+    </div>
+
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h3>Summary</h3>
+    <div class="gridCards">
+      <div class="dcard"><div class="t">Total Queries</div><div class="n" id="tTotal">0</div><div class="s">Total queries found</div></div>
+      <div class="dcard"><div class="t">Closed</div><div class="n" id="tClosed">0</div><div class="s">CLOSED + CLOSED_NOT_DONE</div></div>
+      <div class="dcard"><div class="t">Pending</div><div class="n" id="tPending">0</div><div class="s">NEW + SCHEDULED + ASSIGNED</div></div>
+    </div>
+
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>BookingID</th>
+            <th>Name</th>
+            <th>Query Date</th>
+            <th>Problem</th>
+            <th>Assigned Technician</th>
+            <th>Close Date</th>
+            <th>Payment</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycby6J1PUZdgXAh-T7GVN5SJtw3lM_JeFUyDtj6Zk71ppOik-4wTkqW6zFyswwagNRs76UQ/exec";
+const $ = (id)=>document.getElementById(id);
+
+async function postJSON(payload){
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(payload)
+  });
+  const txt = await res.text();
+  try{ return JSON.parse(txt); }catch(e){ throw new Error("Non-JSON:\n"+txt.slice(0,250)); }
+}
+
+function cleanPhone(v){
+  return String(v||"").replace(/\D/g,"").trim();
+}
+
+function setProfile(name, sub){
+  const n = String(name||"").trim() || "Customer";
+  const s = String(sub||"").trim();
+  $("profile").style.display = "flex";
+  $("pname").textContent = n;
+  $("psub").textContent = s;
+  $("av").textContent = (n[0]||"C").toUpperCase();
+}
+
+function hideProfile(){
+  $("profile").style.display = "none";
+}
+
+function setSummary(items){
+  const total = items.length;
+  let closed = 0;
+  let pending = 0;
+  items.forEach(x=>{
+    const st = String(x.status||"").trim();
+    if(st==="CLOSED" || st==="CLOSED_NOT_DONE") closed++;
+    else pending++;
+  });
+  $("tTotal").textContent = total;
+  $("tClosed").textContent = closed;
+  $("tPending").textContent = pending;
+}
+
+function rowHtml(x){
+  const tech = (x.assignedTo ? x.assignedTo : "-") + (x.assignedPhone ? (" ("+x.assignedPhone+")") : "");
+  const pay = (x.paidAmount ? x.paidAmount : "-") + (x.paymentMode ? (" | "+x.paymentMode) : "");
+  return `
+    <tr>
+      <td class="mono">${x.bookingId||""}</td>
+      <td>${x.name||"-"}</td>
+      <td class="mono">${x.queryDate||"-"}</td>
+      <td>${x.problem||"-"}</td>
+      <td>${tech}</td>
+      <td class="mono">${x.closeDate||"-"}</td>
+      <td class="mono">${pay}</td>
+      <td><span class="pill">${x.status||"-"}</span></td>
+    </tr>
+  `;
+}
+
+async function search(){
+  $("hint").textContent = "";
+  $("btnSearch").disabled = true;
+
+  try{
+    const phone = cleanPhone($("phone").value);
+    const email = String($("email").value||"").trim();
+
+    if(!phone && !email){
+      $("hint").textContent = "❌ Please enter Mobile OR Email.";
+      return;
+    }
+
+    const out = await postJSON({
+      action:"customerTrack",
+      phone: phone,
+      email: email
+    });
+
+    if(!out || !out.ok) throw new Error(out?.error || "Search failed");
+
+    const items = out.items || [];
+    $("resultCard").style.display = "block";
+    setSummary(items);
+    $("tb").innerHTML = items.map(rowHtml).join("") || `<tr><td colspan="8">No records found</td></tr>`;
+
+    setProfile(out.customerName || (items[0] && items[0].name) || "Customer",
+      (phone ? ("Mobile: "+phone) : "") + (phone && email ? " | " : "") + (email ? ("Email: "+email) : "")
+    );
+
+    $("hint").textContent = "✅ Found: " + items.length + " record(s).";
+  }catch(e){
+    $("hint").textContent = "❌ " + String(e);
+    $("resultCard").style.display = "none";
+    hideProfile();
+  }finally{
+    $("btnSearch").disabled = false;
+  }
+}
+
+$("btnSearch").onclick = search;
+
+$("btnClear").onclick = ()=>{
+  $("phone").value="";
+  $("email").value="";
+  $("hint").textContent="";
+  $("resultCard").style.display="none";
+  $("tb").innerHTML="";
+  hideProfile();
+};
+
+</script>
+</body>
+</html>
